@@ -1,21 +1,62 @@
+
 name: Build Windows EXE
 
 on:
-  workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Build AutoWallpaper
     runs-on: windows-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Download repository
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python -m pip install -r requirements.txt pyinstaller
-      - run: python -m PyInstaller --noconfirm --clean --windowed --name AutoWallpaper app.py
-      - uses: actions/upload-artifact@v4
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Check project files
+        shell: pwsh
+        run: |
+          if (!(Test-Path "app.py")) {
+            Write-Error "app.py was not found in the repository root."
+            exit 1
+          }
+
+      - name: Build EXE
+        run: python -m PyInstaller --noconfirm --clean --windowed --onefile --name AutoWallpaper app.py
+
+      - name: Verify EXE
+        shell: pwsh
+        run: |
+          if (!(Test-Path "dist/AutoWallpaper.exe")) {
+            Write-Error "EXE was not created!"
+            Get-ChildItem -Recurse -Filter "*.exe" | Select-Object FullName
+            exit 1
+          }
+          Get-Item "dist/AutoWallpaper.exe" | Select-Object FullName, Length
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
         with:
           name: AutoWallpaper-Windows
           path: dist/AutoWallpaper.exe
+          if-no-files-found: error
+          retention-days: 30
