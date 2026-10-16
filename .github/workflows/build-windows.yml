@@ -1,71 +1,54 @@
-
-name: Build AutoWallpaper for Windows 7
+name: Build AutoWallpaper for Windows 7 x64
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   build:
-    name: Build Windows 7 x64
     runs-on: windows-2022
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.8
+      - name: Install Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8.10"
+          python-version: '3.8.10'
 
-      - name: Install compatible dependencies
+      - name: Install dependencies
         run: |
-          python -m pip install "pip<25.1"
-          python -m pip install "Pillow==9.5.0"
-          python -m pip install "customtkinter==5.2.2"
-          python -m pip install "pyinstaller==5.13.2"
-
-      - name: Check source
-        shell: pwsh
-        run: |
-          if (!(Test-Path "app.py")) {
-            throw "app.py not found in repository root"
-          }
+          python -m pip install --upgrade pip
+          python -m pip install Pillow==9.5.0 customtkinter==5.2.2 pyinstaller==5.13.2
 
       - name: Build application
-        run: >
-          python -m PyInstaller
-          --noconfirm
-          --clean
-          --onedir
-          --windowed
-          --name AutoWallpaper
-          --collect-all customtkinter
-          app.py
-
-      - name: Verify build
         shell: pwsh
         run: |
-          if (!(Test-Path "dist/AutoWallpaper/AutoWallpaper.exe")) {
-            throw "AutoWallpaper.exe was not created"
-          }
+          python -m PyInstaller --noconfirm --clean --onedir --windowed --name AutoWallpaper --collect-all customtkinter app.py
+          if (!(Test-Path "dist/AutoWallpaper/AutoWallpaper.exe")) { throw "EXE not found" }
 
-      - name: Package application
+      - name: Add instructions
         shell: pwsh
         run: |
-          Compress-Archive `
-            -Path "dist/AutoWallpaper/*" `
-            -DestinationPath "AutoWallpaper-Windows7-x64.zip"
+          @'
+          AUTOWALLPAPER — ИНСТРУКЦИЯ
 
-      - name: Upload downloadable ZIP
+          1. Распакуйте весь архив в отдельную папку.
+          2. НЕ перемещайте AutoWallpaper.exe отдельно от остальных файлов.
+          3. Запускайте AutoWallpaper.exe прямо из папки AutoWallpaper.
+          4. Добавляйте изображения через окно приложения.
+          5. Если приложение не запускается на Windows 7, проверьте наличие SP1 и обновлений системы.
+
+          ВАЖНО:
+          Все файлы из архива должны оставаться вместе.
+          Не удаляйте DLL-файлы и папки с зависимостями.
+          '@ | Set-Content "dist/AutoWallpaper/ИНСТРУКЦИЯ.txt" -Encoding UTF8
+          Compress-Archive -Path "dist/AutoWallpaper/*" -DestinationPath "AutoWallpaper-Windows7-x64.zip" -Force
+
+      - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
           name: AutoWallpaper-Windows7-x64
           path: AutoWallpaper-Windows7-x64.zip
-          if-no-files-found: error
-          retention-days: 30
